@@ -227,8 +227,31 @@ Catatan penting untuk demo lokal:
 
 - Compose menyetel `ALLOW_LOCAL_TARGETS=true` agar endpoint di mesin/container yang sama dapat diuji. **Jangan pakai nilai ini di VPS** — SSRF guard harus tetap menolak IP privat.
 - Nginx memakai `client_max_body_size 2m`, sengaja di atas batas backend 1 MB, agar payload kebesaran tetap dijawab `400 REQUEST_BODY_TOO_LARGE` (JSON) dan bukan `413` HTML dari Nginx.
-- Di VPS, blok `server` pada `frontend/deploy/nginx.conf` digantikan reverse proxy yang sudah ada di sana; hanya container `backend` yang perlu dituju pada `/api/`.
 - Untuk target yang berjalan di host (bukan di jaringan Compose), gunakan `http://host.docker.internal:<port>` dari dalam container.
+
+### 5. Deployment ke VPS (GitLab CI/CD)
+
+Demo produksi berjalan di **VPS1** (`demo-acf-project.ard6j1.my.id`) dengan pipeline hybrid:
+
+| Job | Runner | Isi |
+|---|---|---|
+| `test:backend`, `test:frontend`, `build:images` | `vps2` | Test + build image (server dengan swap besar) |
+| `deploy:vps1` | `vps1` | `docker compose pull && up -d` di host tempat container hidup |
+
+Arsitektur jaringan di VPS1:
+
+```text
+Cloudflare Tunnel → edge_nginx (vhost deploy/40-acf.conf)
+                        │  (network acf_net)
+                        ├─ acf-frontend (static Astro, tidak publish port)
+                        └─ acf-backend  (Fastify :3001, tidak publish port)
+```
+
+- `deploy/docker-compose.prod.yml` membuat network **`acf_net`** khusus ACF; `edge_nginx` di-attach ke network itu via `docker network connect acf_net edge_nginx` (sekali, manual).
+- **Tidak ada port yang dipublish ke host** — satu-satunya jalur masuk adalah Cloudflare Tunnel → `edge_nginx`, sehingga Security Group AWS tidak perlu dibuka.
+- `ALLOW_LOCAL_TARGETS=false` di produksi (SSRF guard penuh); `TRUST_PROXY=true` karena Nginx meneruskan `X-Forwarded-For`.
+- Setiap deploy menyalin `docker-compose.prod.yml` + `.env` (tag image dari CI) ke `/srv/acf/` di host, lalu `docker compose up -d` dan reload `edge_nginx`.
+- GitLab CI/CD variable `PROXY_API_KEY` dibuat kosong; frontend belum mengirim header `x-proxy-key` (lihat [Batasan](#batasan--keterbatasan-yang-diketahui)).
 
 ---
 
