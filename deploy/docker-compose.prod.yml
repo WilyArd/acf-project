@@ -1,13 +1,21 @@
-# Compose produksi ACF Workbench di VPS (aws2). Standalone: network sendiri,
-# port dipublish ke IP privat host (pola routing Cloudflare Tunnel di server ini).
-# Deploy oleh GitLab Runner (tag "acf") via `docker compose -f ... up -d`.
+# Compose produksi ACF Workbench di VPS1 (aws1).
+# Network "acf_net" khusus ACF; edge_nginx di-attach ke network ini sekali
+# (docker network connect acf_net edge_nginx) agar bisa mem-proxy via nama
+# container tanpa publish port ke host. Deploy oleh GitLab Runner (tag "vps1").
 
 name: acf
+
+networks:
+  acf_net:
+    name: acf_net
 
 services:
   backend:
     image: ${BACKEND_IMAGE}
+    container_name: acf-backend
     restart: unless-stopped
+    networks:
+      - acf_net
     environment:
       HOST: 0.0.0.0
       PORT: 3001
@@ -15,12 +23,8 @@ services:
       ALLOW_LOCAL_TARGETS: "false"
       # Opsional: isi CI/CD variable PROXY_API_KEY untuk mengaktifkan x-proxy-key.
       PROXY_API_KEY: "${PROXY_API_KEY:-}"
-      # Nginx di depan backend memakai IP privat (bukan hostname container),
-      # sehingga X-Forwarded-For bisa dipercaya.
+      # edge_nginx mem-proxy dengan X-Forwarded-For; percayai header itu.
       TRUST_PROXY: "true"
-    ports:
-      # Bind ke IP privat (pola aws2), bukan 0.0.0.0.
-      - "172.31.29.33:3001:3001"
     healthcheck:
       test:
         - CMD
@@ -39,12 +43,13 @@ services:
 
   frontend:
     image: ${FRONTEND_IMAGE}
+    container_name: acf-frontend
     restart: unless-stopped
+    networks:
+      - acf_net
     depends_on:
       backend:
         condition: service_healthy
-    ports:
-      - "172.31.29.33:8080:80"
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1/"]
       interval: 15s

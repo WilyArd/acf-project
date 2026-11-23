@@ -1,6 +1,9 @@
-# Pipeline ACF Workbench — seluruh job berjalan di runner VPS2 (tag "vps2").
+# Pipeline ACF Workbench — seluruh job berjalan di runner VPS1 (tag "vps1").
 # Runner memakai executor docker dengan /var/run/docker.sock ter-mount,
-# sehingga job dapat membangun dan mengelola image langsung di host VPS2.
+# sehingga job dapat membangun image dan mengelola compose host langsung.
+# Deploy menyalin compose + .env ke /srv/acf (host) lalu memicu container ACF
+# pada network laundroops_laundro_net; edge_nginx mem-proxy via 40-acf.conf.
+
 stages:
   - test
   - build
@@ -12,18 +15,13 @@ variables:
   COMPOSE_FILE: /srv/acf/docker-compose.prod.yml
 
 default:
-  # Tag runner VPS2 (gitlab-runner-vps2, executor docker).
+  # Tag runner VPS1 (gitlab-runner "vps-aws docker runner").
   # Jangan diubah ke tag lain tanpa memastikan runner tujuan ter-attach ke project ini.
   tags:
-    - vps2
-
-.test_template: &test_template
-  stage: test
-  script:
-    - cd backend && npm ci && npm run typecheck && npm test
+    - vps1
 
 test:backend:
-  <<: *test_template
+  stage: test
   image: node:24-alpine
   variables:
     npm_config_cache: "$CI_PROJECT_DIR/backend/.npm"
@@ -31,18 +29,20 @@ test:backend:
     key: backend-$CI_COMMIT_REF_SLUG
     paths:
       - backend/.npm/
+  script:
+    - cd backend && npm ci && npm run typecheck && npm test
 
 test:frontend:
-  <<: *test_template
+  stage: test
   image: node:24-alpine
-  script:
-    - cd frontend && npm ci && npm run check && npm test
   variables:
     npm_config_cache: "$CI_PROJECT_DIR/frontend/.npm"
   cache:
     key: frontend-$CI_COMMIT_REF_SLUG
     paths:
       - frontend/.npm/
+  script:
+    - cd frontend && npm ci && npm run check && npm test
 
 build:images:
   stage: build
@@ -60,7 +60,7 @@ build:images:
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
-deploy:vps2:
+deploy:vps1:
   stage: deploy
   image: docker:29-cli
   needs:
@@ -69,7 +69,7 @@ deploy:vps2:
     name: demo
     url: https://demo-acf-project.ard6j1.my.id
   script:
-    # Sinkronkan compose produksi dari checkout CI ke /srv/acf (host VPS2 via mount runner).
+    # Sinkronkan compose produksi dari checkout CI ke /srv/acf (host VPS1 via mount runner).
     - cp "$CI_PROJECT_DIR/deploy/docker-compose.prod.yml" /srv/acf/docker-compose.prod.yml
     - echo "Logging in to GitLab Container Registry..."
     - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
@@ -77,8 +77,10 @@ deploy:vps2:
     - printf 'BACKEND_IMAGE=%s\nFRONTEND_IMAGE=%s\nPROXY_API_KEY=%s\n' "$IMAGE_BACKEND:$CI_COMMIT_SHORT_SHA" "$IMAGE_FRONTEND:$CI_COMMIT_SHORT_SHA" "$PROXY_API_KEY" > /srv/acf/.env
     - docker compose -f "$COMPOSE_FILE" pull
     - docker compose -f "$COMPOSE_FILE" up -d
+    # Edge nginx perlu re-read config jika 40-acf.conf berubah; reload tanpa downtime.
+    - docker exec edge_nginx nginx -t && docker exec edge_nginx nginx -s reload || echo "edge nginx reload skipped"
     - docker image prune -f
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-  # Deploy menyentuh container produksi; jangan biarkan job berjalan paralel.
+  # Deploy menyentuh container demo; jangan biarkan job berjalan paralel.
   resource_group: production
