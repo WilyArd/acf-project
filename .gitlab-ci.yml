@@ -67,7 +67,7 @@ deploy:vps2:
     - job: build:images
   environment:
     name: demo
-    url: https://demo.acf-project.ard6j1.my.id
+    url: https://demo-acf-project.ard6j1.my.id
   script:
     - echo "Logging in to GitLab Container Registry..."
     - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
