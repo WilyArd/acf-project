@@ -1,0 +1,51 @@
+# Demo lokal: satu perintah `docker compose up --build` -> http://localhost:8080
+# Dua layanan stateless (tanpa DB/S3). Nginx di sini KHUSUS lokal; di VPS,
+# reverse proxy yang sudah ada di sana yang menangani /api.
+name: acf-workbench
+
+services:
+  backend:
+    build:
+      context: ./backend
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3001
+      # Demo lokal: target API biasanya satu mesin (ecommerce/tenant isolation).
+      # WAJIB false di VPS/produksi agar SSRF guard menolak IP privat.
+      ALLOW_LOCAL_TARGETS: "true"
+      # Kosong = tanpa auth proxy. Isi untuk mensimulasikan PROXY_API_KEY.
+      PROXY_API_KEY: ""
+      # Nginx adalah reverse proxy-nya, jadi percayai header X-Forwarded-For.
+      TRUST_PROXY: "true"
+      RATE_LIMIT_MAX: "30"
+      RATE_LIMIT_WINDOW_MS: "60000"
+    # Tidak ada port publish: backend hanya dapat diakses lewat Nginx.
+    expose:
+      - "3001"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3001/api/proxy/execute',{method:'POST',headers:{'content-type':'application/json'},body:'{}'}).then(r=>process.exit(r.status===400?0:1)).catch(()=>process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 5s

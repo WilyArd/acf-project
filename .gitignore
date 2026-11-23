@@ -1,0 +1,27 @@
+# Dependensi
+node_modules/
+
+# Hasil build
+dist/
+.astro/
+*.tsbuildinfo
+
+# Environment & kredensial
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Log & OS
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Catatan lokal
+AGENTS.md

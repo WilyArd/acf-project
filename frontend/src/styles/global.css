@@ -1,0 +1,195 @@
+@import "tailwindcss";
+
+:root,
+[data-theme="dark"] {
+  --surface-canvas: #0a0a0a;
+  --surface-elevated: #141414;
+  --surface-recessed: #1c1c1c;
+  --surface-hover: #242424;
+
+  --text-primary: #f5f5f5;
+  --text-secondary: #a3a3a3;
+  --text-muted: #8f8f8f;
+
+  --border-hairline: #262626;
+  --border-control: #3a3a3a;
+  --border-strong: #6b6b6b;
+
+  --brand-action: #f97316;
+  --brand-action-hover: #fb923c;
+  --brand-on-action: #0a0a0a;
+  --brand-tint: #2a160b;
+  --brand-tint-border: #c2410c;
+  --brand-tint-text: #fdba74;
+
+  --status-pass-bg: #0d2617;
+  --status-pass-border: #166534;
+  --status-pass-fg: #4ade80;
+
+  --status-fail-bg: #2d1114;
+  --status-fail-border: #991b1b;
+  --status-fail-fg: #fca5a5;
+
+  --status-error-bg: #222226;
+  --status-error-border: #52525b;
+  --status-error-fg: #d4d4d8;
+
+  --status-warn-bg: #2b1d08;
+  --status-warn-border: #92400e;
+  --status-warn-fg: #fcd34d;
+
+  --method-get: #4ade80;
+  --method-post: #fcd34d;
+  --method-put: #60a5fa;
+  --method-patch: #c084fc;
+  --method-delete: #fca5a5;
+
+  --json-key: #7dd3fc;
+  --json-string: #fdba74;
+  --json-number: #4ade80;
+  --json-boolean: #c084fc;
+  --json-null: #f87171;
+
+  --scrim: rgba(0, 0, 0, 0.65);
+  --shadow-popover: 0 4px 12px rgba(0, 0, 0, 0.45);
+  --shadow-modal: 0 12px 28px rgba(0, 0, 0, 0.6);
+
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --surface-canvas: #ffffff;
+  --surface-elevated: #fafafa;
+  --surface-recessed: #f5f5f5;
+  --surface-hover: #ebebeb;
+
+  --text-primary: #111111;
+  --text-secondary: #525252;
+  --text-muted: #5e5e5e;
+
+  --border-hairline: #e5e5e5;
+  --border-control: #c7c7c7;
+  --border-strong: #8c8c8c;
+
+  --brand-action: #c2410c;
+  --brand-action-hover: #9a3412;
+  --brand-on-action: #ffffff;
+  --brand-tint: #fff7ed;
+  --brand-tint-border: #fdba74;
+  --brand-tint-text: #c2410c;
+
+  --status-pass-bg: #f0fdf4;
+  --status-pass-border: #86efac;
+  --status-pass-fg: #166534;
+
+  --status-fail-bg: #fef2f2;
+  --status-fail-border: #fca5a5;
+  --status-fail-fg: #b91c1c;
+
+  --status-error-bg: #f4f4f5;
+  --status-error-border: #d4d4d8;
+  --status-error-fg: #3f3f46;
+
+  --status-warn-bg: #fffbeb;
+  --status-warn-border: #fcd34d;
+  --status-warn-fg: #92400e;
+
+  --method-get: #166534;
+  --method-post: #92400e;
+  --method-put: #1d4ed8;
+  --method-patch: #6d28d9;
+  --method-delete: #b91c1c;
+
+  --json-key: #0369a1;
+  --json-string: #b45309;
+  --json-number: #15803d;
+  --json-boolean: #6d28d9;
+  --json-null: #b91c1c;
+
+  --scrim: rgba(0, 0, 0, 0.45);
+  --shadow-popover: 0 4px 12px rgba(0, 0, 0, 0.12);
+  --shadow-modal: 0 12px 28px rgba(0, 0, 0, 0.22);
+
+  color-scheme: light;
+}
+
+@layer base {
+  html,
+  body {
+    background-color: var(--surface-canvas);
+    color: var(--text-primary);
+    font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    overflow-x: clip;
+  }
+
+  code,
+  pre,
+  .font-mono {
+    font-family: "JetBrains Mono", "Consolas", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  /* Antislop R-39: Pointer cursor on enabled interactive controls, not-allowed on disabled */
+  a[href],
+  button:not(:disabled),
+  summary,
+  select:not(:disabled),
+  label[for],
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"]:not([aria-disabled="true"]),
+  [role="switch"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  select:disabled,
+  input:disabled,
+  textarea:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
+  /* Antislop R-32: High-contrast focus ring in both themes */
+  :focus-visible {
+    outline: 2px solid var(--brand-action);
+    outline-offset: 2px;
+  }
+
+  /* Clean subtle scrollbars inside independent panes */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-control) transparent;
+  }
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0.5rem;
+  z-index: 100;
+  background: var(--brand-action);
+  color: var(--brand-on-action);
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.skip-link:focus {
+  left: 0.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,41 @@
+---
+import '../styles/global.css';
+import { WorkbenchApp } from '../components/WorkbenchApp';
+---
+
+<!doctype html>
+<html lang="id" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.github.com https://raw.githubusercontent.com ws: wss:; object-src 'none'; base-uri 'self'; form-action 'self';"
+    />
+    <meta
+      name="description"
+      content="ACF Automated API Testing Tool: uji endpoint RESTful API dengan environment switcher, assertion deterministik PASS/FAIL, dan bypass CORS."
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <title>ACF Workbench: Automated API Testing Tool</title>
+    <script is:inline>
+      try {
+        const t = localStorage.getItem('acf-theme');
+        if (t === 'light' || t === 'dark') {
+          document.documentElement.setAttribute('data-theme', t);
+        }
+      } catch {}
+    </script>
+  </head>
+  <body>
+    <WorkbenchApp client:load />
+  </body>
+</html>
