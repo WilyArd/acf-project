@@ -20,9 +20,7 @@ default:
 .test_template: &test_template
   stage: test
   script:
-    - npm ci
-    - npm run typecheck
-    - npm test
+    - cd backend && npm ci && npm run typecheck && npm test
 
 test:backend:
   <<: *test_template
@@ -37,6 +35,8 @@ test:backend:
 test:frontend:
   <<: *test_template
   image: node:24-alpine
+  script:
+    - cd frontend && npm ci && npm run check && npm test
   variables:
     npm_config_cache: "$CI_PROJECT_DIR/frontend/.npm"
   cache:
