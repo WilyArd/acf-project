@@ -1,8 +1,8 @@
-# Pipeline ACF Workbench — seluruh job berjalan di runner VPS1 (tag "vps1").
-# Runner memakai executor docker dengan /var/run/docker.sock ter-mount,
-# sehingga job dapat membangun image dan mengelola compose host langsung.
-# Deploy menyalin compose + .env ke /srv/acf (host) lalu memicu container ACF
-# pada network laundroops_laundro_net; edge_nginx mem-proxy via 40-acf.conf.
+# Pipeline ACF Workbench — hybrid:
+# - test + build di runner VPS2 (tag "vps2", lebih besar RAM + swap 4G) agar VPS1 tidak terbebani
+# - deploy di runner VPS1 (tag "vps1") karena container demo hidup di VPS1
+#   (runner vps1 = executor shell di dalam container gitlab-runner dengan
+#    mount docker.sock + /srv/acf, jadi job deploy mengelola docker host VPS1)
 
 stages:
   - test
@@ -14,14 +14,9 @@ variables:
   IMAGE_FRONTEND: $CI_REGISTRY_IMAGE/frontend
   COMPOSE_FILE: /srv/acf/docker-compose.prod.yml
 
-default:
-  # Tag runner VPS1 (gitlab-runner "vps-aws docker runner").
-  # Jangan diubah ke tag lain tanpa memastikan runner tujuan ter-attach ke project ini.
-  tags:
-    - vps1
-
 test:backend:
   stage: test
+  tags: [vps2]
   image: node:24-alpine
   variables:
     npm_config_cache: "$CI_PROJECT_DIR/backend/.npm"
@@ -34,6 +29,7 @@ test:backend:
 
 test:frontend:
   stage: test
+  tags: [vps2]
   image: node:24-alpine
   variables:
     npm_config_cache: "$CI_PROJECT_DIR/frontend/.npm"
@@ -46,6 +42,7 @@ test:frontend:
 
 build:images:
   stage: build
+  tags: [vps2]
   image: docker:29-cli
   needs:
     - job: test:backend
@@ -62,6 +59,8 @@ build:images:
 
 deploy:vps1:
   stage: deploy
+  # Deploy WAJIB di VPS1: di sinilah container demo berjalan.
+  tags: [vps1]
   image: docker:29-cli
   needs:
     - job: build:images
