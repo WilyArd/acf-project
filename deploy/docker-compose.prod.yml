@@ -1,0 +1,58 @@
+# Compose produksi ACF Workbench di VPS (aws2). Standalone: network sendiri,
+# port dipublish ke IP privat host (pola routing Cloudflare Tunnel di server ini).
+# Deploy oleh GitLab Runner (tag "acf") via `docker compose -f ... up -d`.
+
+name: acf
+
+services:
+  backend:
+    image: ${BACKEND_IMAGE}
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3001
+      # Produksi: SSRF guard AKTIF, target privat diblokir.
+      ALLOW_LOCAL_TARGETS: "false"
+      # Opsional: isi CI/CD variable PROXY_API_KEY untuk mengaktifkan x-proxy-key.
+      PROXY_API_KEY: "${PROXY_API_KEY:-}"
+      # Nginx di depan backend memakai IP privat (bukan hostname container),
+      # sehingga X-Forwarded-For bisa dipercaya.
+      TRUST_PROXY: "true"
+    ports:
+      # Bind ke IP privat (pola aws2), bukan 0.0.0.0.
+      - "172.31.29.33:3001:3001"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3001/api/proxy/execute',{method:'POST',headers:{'content-type':'application/json'},body:'{}'}).then(r=>process.exit(r.status===400?0:1)).catch(()=>process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    image: ${FRONTEND_IMAGE}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "172.31.29.33:8080:80"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

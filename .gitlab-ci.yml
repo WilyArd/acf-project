@@ -1,0 +1,82 @@
+# Pipeline ACF Workbench — seluruh job berjalan di runner VPS2 (tag "vps2").
+# Runner memakai executor docker dengan /var/run/docker.sock ter-mount,
+# sehingga job dapat membangun dan mengelola image langsung di host VPS2.
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  IMAGE_BACKEND: $CI_REGISTRY_IMAGE/backend
+  IMAGE_FRONTEND: $CI_REGISTRY_IMAGE/frontend
+  COMPOSE_FILE: /srv/acf/docker-compose.prod.yml
+
+default:
+  # Tag runner VPS2 (gitlab-runner-vps2, executor docker).
+  # Jangan diubah ke tag lain tanpa memastikan runner tujuan ter-attach ke project ini.
+  tags:
+    - vps2
+
+.test_template: &test_template
+  stage: test
+  script:
+    - npm ci
+    - npm run typecheck
+    - npm test
+
+test:backend:
+  <<: *test_template
+  image: node:24-alpine
+  variables:
+    npm_config_cache: "$CI_PROJECT_DIR/backend/.npm"
+  cache:
+    key: backend-$CI_COMMIT_REF_SLUG
+    paths:
+      - backend/.npm/
+
+test:frontend:
+  <<: *test_template
+  image: node:24-alpine
+  variables:
+    npm_config_cache: "$CI_PROJECT_DIR/frontend/.npm"
+  cache:
+    key: frontend-$CI_COMMIT_REF_SLUG
+    paths:
+      - frontend/.npm/
+
+build:images:
+  stage: build
+  image: docker:29-cli
+  needs:
+    - job: test:backend
+    - job: test:frontend
+  script:
+    - echo "Logging in to GitLab Container Registry..."
+    - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
+    - docker build -t "$IMAGE_BACKEND:$CI_COMMIT_SHORT_SHA" ./backend
+    - docker build -t "$IMAGE_FRONTEND:$CI_COMMIT_SHORT_SHA" ./frontend
+    - docker push "$IMAGE_BACKEND:$CI_COMMIT_SHORT_SHA"
+    - docker push "$IMAGE_FRONTEND:$CI_COMMIT_SHORT_SHA"
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+deploy:vps2:
+  stage: deploy
+  image: docker:29-cli
+  needs:
+    - job: build:images
+  environment:
+    name: demo
+    url: https://demo.acf-project.ard6j1.my.id
+  script:
+    - echo "Logging in to GitLab Container Registry..."
+    - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
+    # Tulis tag image terbaru ke /srv/acf/.env (dibaca oleh docker-compose.prod.yml).
+    - printf 'BACKEND_IMAGE=%s\nFRONTEND_IMAGE=%s\nPROXY_API_KEY=%s\n' "$IMAGE_BACKEND:$CI_COMMIT_SHORT_SHA" "$IMAGE_FRONTEND:$CI_COMMIT_SHORT_SHA" "$PROXY_API_KEY" > /srv/acf/.env
+    - docker compose -f "$COMPOSE_FILE" pull
+    - docker compose -f "$COMPOSE_FILE" up -d
+    - docker image prune -f
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  # Deploy menyentuh container produksi; jangan biarkan job berjalan paralel.
+  resource_group: production
