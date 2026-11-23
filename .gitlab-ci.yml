@@ -69,6 +69,8 @@ deploy:vps2:
     name: demo
     url: https://demo-acf-project.ard6j1.my.id
   script:
+    # Sinkronkan compose produksi dari checkout CI ke /srv/acf (host VPS2 via mount runner).
+    - cp "$CI_PROJECT_DIR/deploy/docker-compose.prod.yml" /srv/acf/docker-compose.prod.yml
     - echo "Logging in to GitLab Container Registry..."
     - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
     # Tulis tag image terbaru ke /srv/acf/.env (dibaca oleh docker-compose.prod.yml).
