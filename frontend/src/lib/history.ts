@@ -5,26 +5,23 @@ export const THEME_STORAGE_KEY = 'acf-theme';
 export const INSPECTOR_STORAGE_KEY = 'acf-inspector-open';
 export const MAX_HISTORY_ENTRIES = 50;
 
-/** Baca preferensi buka/tutup Variables Inspector (default true). */
-export function loadInspectorPreference(
-  storage: Pick<Storage, 'getItem'> = window.localStorage,
-): boolean {
+/** Baca preferensi buka/tutup Variables Inspector (default true). Aman saat SSR. */
+export function loadInspectorPreference(storage?: Pick<Storage, 'getItem'>): boolean {
   try {
-    const raw = storage.getItem(INSPECTOR_STORAGE_KEY);
+    const store = storage ?? (typeof window === 'undefined' ? undefined : window.localStorage);
+    const raw = store?.getItem(INSPECTOR_STORAGE_KEY);
     if (raw === 'true') return true;
     if (raw === 'false') return false;
   } catch {
-    // Storage tidak tersedia (mis. mode privat) -> fallback default.
+    // Storage tidak tersedia (mis. mode privat / SSR) -> fallback default.
   }
   return true;
 }
 
-export function saveInspectorPreference(
-  open: boolean,
-  storage: Pick<Storage, 'setItem'> = window.localStorage,
-): void {
+export function saveInspectorPreference(open: boolean, storage?: Pick<Storage, 'setItem'>): void {
   try {
-    storage.setItem(INSPECTOR_STORAGE_KEY, String(open));
+    const store = storage ?? (typeof window === 'undefined' ? undefined : window.localStorage);
+    store?.setItem(INSPECTOR_STORAGE_KEY, String(open));
   } catch {
     // Abaikan: preferensi UI tidak boleh membuat aplikasi crash.
   }
