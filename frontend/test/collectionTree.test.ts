@@ -5,6 +5,11 @@ import {
   collectFolderItemIds,
   type FolderNode,
 } from '../src/lib/collectionTree.ts';
+import {
+  INSPECTOR_STORAGE_KEY,
+  loadInspectorPreference,
+  saveInspectorPreference,
+} from '../src/lib/history.ts';
 import type { CollectionRequestItem } from '../src/types/api.ts';
 
 function item(id: string, folderPath: string[], name = id): CollectionRequestItem {
@@ -151,4 +156,26 @@ test('buildCollectionTree preserves declaration order of folders and of requests
 
   assert.deepEqual(tree.folders.map((f) => f.name), ['Zeta', 'Alpha']);
   assert.deepEqual(findFolder(tree, 'Zeta')!.items.map((i) => i.id), ['z', 'm']);
+});
+
+test('inspector preference persists to localStorage and restores boolean state', () => {
+  const store = new Map<string, string>();
+  const fakeStorage = {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => void store.set(k, v),
+    removeItem: (k: string) => void store.delete(k),
+  } as unknown as Storage;
+
+  // Default true ketika belum pernah disimpan
+  assert.equal(loadInspectorPreference(fakeStorage), true);
+
+  saveInspectorPreference(false, fakeStorage);
+  assert.equal(loadInspectorPreference(fakeStorage), false);
+
+  saveInspectorPreference(true, fakeStorage);
+  assert.equal(loadInspectorPreference(fakeStorage), true);
+
+  // Nilai korup diabaikan -> fallback default true
+  store.set(INSPECTOR_STORAGE_KEY, 'bukan-boolean');
+  assert.equal(loadInspectorPreference(fakeStorage), true);
 });

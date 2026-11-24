@@ -2,7 +2,33 @@ import { ALLOWED_METHODS, type HistoryEntry, type HttpMethod } from '../types/ap
 
 export const HISTORY_STORAGE_KEY = 'acf-history';
 export const THEME_STORAGE_KEY = 'acf-theme';
+export const INSPECTOR_STORAGE_KEY = 'acf-inspector-open';
 export const MAX_HISTORY_ENTRIES = 50;
+
+/** Baca preferensi buka/tutup Variables Inspector (default true). */
+export function loadInspectorPreference(
+  storage: Pick<Storage, 'getItem'> = window.localStorage,
+): boolean {
+  try {
+    const raw = storage.getItem(INSPECTOR_STORAGE_KEY);
+    if (raw === 'true') return true;
+    if (raw === 'false') return false;
+  } catch {
+    // Storage tidak tersedia (mis. mode privat) -> fallback default.
+  }
+  return true;
+}
+
+export function saveInspectorPreference(
+  open: boolean,
+  storage: Pick<Storage, 'setItem'> = window.localStorage,
+): void {
+  try {
+    storage.setItem(INSPECTOR_STORAGE_KEY, String(open));
+  } catch {
+    // Abaikan: preferensi UI tidak boleh membuat aplikasi crash.
+  }
+}
 
 export function redactHistoryUrl(rawUrl: string): string {
   const trimmed = String(rawUrl ?? '').trim();

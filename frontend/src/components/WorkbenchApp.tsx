@@ -15,6 +15,8 @@ import {
   appendHistoryEntry,
   clearHistory,
   loadHistory,
+  loadInspectorPreference,
+  saveInspectorPreference,
   THEME_STORAGE_KEY,
 } from '../lib/history';
 import {
@@ -89,7 +91,7 @@ export const WorkbenchApp: React.FC = () => {
   const [viewMode, setViewMode] = useState<'request' | 'env-editor' | 'batch-runner'>('request');
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('collections');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [inspectorOpen, setInspectorOpen] = useState(true);
+  const [inspectorOpen, setInspectorOpen] = useState(() => loadInspectorPreference());
   const [globalFilter, setGlobalFilter] = useState('');
   const [proxyStatus, setProxyStatus] = useState<'idle' | 'online' | 'offline'>('idle');
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -218,8 +220,7 @@ export const WorkbenchApp: React.FC = () => {
       setInspectorOpen(false);
     }
 
-    let mounted = true;
-    void loadWorkspaceFromDb().then((snapshot) => {
+    let mounted = true;    void loadWorkspaceFromDb().then((snapshot) => {
       if (!mounted) return;
       if (snapshot) {
         if (snapshot.collections.length > 0) setCollections(snapshot.collections);
@@ -251,6 +252,19 @@ export const WorkbenchApp: React.FC = () => {
     } catch {
       // Ignore storage errors
     }
+  };
+
+  const handleToggleInspector = () => {
+    setInspectorOpen((open) => {
+      const next = !open;
+      saveInspectorPreference(next);
+      return next;
+    });
+  };
+
+  const closeInspector = () => {
+    setInspectorOpen(false);
+    saveInspectorPreference(false);
   };
 
   // Loading elapsed timer tracked per active tab
@@ -1260,7 +1274,7 @@ export const WorkbenchApp: React.FC = () => {
         onCreateEnv={() => handleCreateEnv()}
         onOpenImport={() => setImportModalOpen(true)}
         inspectorOpen={inspectorOpen}
-        onToggleInspector={() => setInspectorOpen((o) => !o)}
+        onToggleInspector={handleToggleInspector}
         unresolvedCount={varTracking.unresolved.length}
         searchQuery={globalFilter}
         onSearchChange={setGlobalFilter}
@@ -1547,7 +1561,7 @@ export const WorkbenchApp: React.FC = () => {
                 }}
                 onQuickAddVariable={handleQuickAddVariable}
                 onQuickUpdateVariable={handleQuickUpdateVariable}
-                onClose={() => setInspectorOpen(false)}
+                onClose={closeInspector}
               />
             </div>
 
@@ -1555,7 +1569,7 @@ export const WorkbenchApp: React.FC = () => {
               className="fixed inset-0 z-40 flex justify-end xl:hidden"
               style={{ backgroundColor: 'var(--scrim)' }}
               onMouseDown={(e) => {
-                if (e.target === e.currentTarget) setInspectorOpen(false);
+                if (e.target === e.currentTarget) closeInspector();
               }}
             >
               <div className="h-full w-76 max-w-[85vw]">
@@ -1567,7 +1581,7 @@ export const WorkbenchApp: React.FC = () => {
                   variableSources={mergedEnvInfo.sources}
                   collectionEnvName={activeCollectionEnv?.name ?? null}
                   onEditEnv={() => {
-                    setInspectorOpen(false);
+                    closeInspector();
                     const target = activeEnv ?? activeCollectionEnv ?? environments[0] ?? null;
                     if (target) {
                       setEditingEnvId(target.id);
@@ -1577,11 +1591,11 @@ export const WorkbenchApp: React.FC = () => {
                     }
                   }}
                   onQuickAddVariable={(name) => {
-                    setInspectorOpen(false);
+                    closeInspector();
                     handleQuickAddVariable(name);
                   }}
                   onQuickUpdateVariable={handleQuickUpdateVariable}
-                  onClose={() => setInspectorOpen(false)}
+                  onClose={closeInspector}
                 />
               </div>
             </div>
